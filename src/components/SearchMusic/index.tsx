@@ -1,12 +1,11 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { motion } from "framer-motion";
-import { Play, Pause, Loader2, Send, Search, MessageSquarePlus, AlertCircle, X, Clock, CheckCircle } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Play, Pause, Loader2, Send, Search, MessageSquarePlus, AlertCircle, X, Clock, CheckCircle, Music } from "lucide-react";
 import { db, collection, addDoc, getDocs, query, where, doc, updateDoc, onSnapshot, QuerySnapshot } from "@../../../lib/firebase";
 import Image from "next/image";
 
-// Definir los tipos para las props del componente
 interface MusicSearchProps {
     eventId: string;
     maxSongs?: number;
@@ -52,8 +51,20 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ eventId, maxSongs = Infinity,
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+    const searchInputRef = useRef<HTMLInputElement>(null);
 
-    // Escuchar cambios en tiempo real de las canciones solicitadas
+    // Scroll al final cuando cambian los resultados
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [results, messageInputVisible]);
+
+    // Enfocar el input de búsqueda al cargar
+    useEffect(() => {
+        searchInputRef.current?.focus();
+    }, []);
+
+    // Escuchar solicitudes de canciones en tiempo real
     useEffect(() => {
         const requestRef = collection(db, "event_requests");
         const q = query(requestRef, where("eventId", "==", eventId));
@@ -65,7 +76,7 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ eventId, maxSongs = Infinity,
         return () => unsubscribe();
     }, [eventId]);
 
-    // Manejar el temporizador de espera entre solicitudes
+    // Manejar el tiempo de espera entre solicitudes
     useEffect(() => {
         if (lastRequestTime) {
             const calculateTimeLeft = () => {
@@ -151,14 +162,12 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ eventId, maxSongs = Infinity,
     };
 
     const sendToDJ = async (track: Track) => {
-        // Verificar si hay que esperar antes de hacer otra solicitud
         if (lastRequestTime && timeLeft > 0) {
             setShowTimeAlert(true);
             setTimeout(() => setShowTimeAlert(false), 3000);
             return;
         }
 
-        // Verificar si se ha alcanzado el límite de canciones
         if (songsRequested >= maxSongs) {
             setShowLimitAlert(true);
             setTimeout(() => setShowLimitAlert(false), 3000);
@@ -167,33 +176,29 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ eventId, maxSongs = Infinity,
 
         setSelectedTrack(track);
 
-        // Verificar si se deben mostrar el QR de pago
         if (acceptPayment && qrPaymentUrl) {
             setModalContent({
-                title: "Colabora con el DJ",
-                message: "¿Te gustaría apoyar al DJ?",
+                title: "Apoya al DJ",
+                message: "¿Te gustaría hacer una contribución al DJ?",
                 isUpdate: false,
                 showQR: true,
-                action: () => processTrackSubmission(track, false), // false = no payment
+                action: () => processTrackSubmission(track, false),
             });
             setShowModal(true);
             return;
         }
 
-        // Si no hay pago requerido, proceder directamente con el envío
         await processTrackSubmission(track, false);
     };
 
     const processTrackSubmission = async (track: Track, withPayment: boolean) => {
         setSendingTrack(track.id);
         try {
-            // Verificar si la canción ya está en la base de datos
             const requestRef = collection(db, "event_requests");
             const q = query(requestRef, where("eventId", "==", eventId), where("trackId", "==", track.id));
             const querySnapshot = await getDocs(q);
 
             if (!querySnapshot.empty) {
-                // Si la canción ya fue solicitada, incrementamos el contador
                 const existingDoc = querySnapshot.docs[0];
                 const existingData = existingDoc.data();
                 const docRef = doc(db, "event_requests", existingDoc.id);
@@ -205,13 +210,12 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ eventId, maxSongs = Infinity,
                 });
 
                 setModalContent({
-                    title: "Canción actualizada",
-                    message: `"${track.title}" de ${track.artist.name} ya fue solicitada. Contador actualizado.`,
+                    title: "Canción Actualizada",
+                    message: `"${track.title}" de ${track.artist.name} ya fue solicitada. Se aumentó el contador.`,
                     isUpdate: true,
                     showQR: false,
                 });
             } else {
-                // Si la canción no está en la base de datos, la registramos con un contador inicial de 1
                 await addDoc(requestRef, {
                     eventId: eventId,
                     trackId: track.id,
@@ -226,23 +230,20 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ eventId, maxSongs = Infinity,
                 });
 
                 setModalContent({
-                    title: "Canción enviada",
+                    title: "¡Canción Enviada!",
                     message: `"${track.title}" de ${track.artist.name} ha sido enviada al DJ 🎶`,
                     isUpdate: false,
                     showQR: false,
                 });
             }
 
-            // Mostrar el modal de confirmación
             setShowModal(true);
-
-            // Establecer el tiempo de la última solicitud
             setLastRequestTime(new Date());
         } catch (error) {
             console.error("Error al enviar la canción: ", error);
             setModalContent({
                 title: "Error",
-                message: "Hubo un error al enviar la canción.",
+                message: "Hubo un error al enviar tu canción.",
                 isUpdate: false,
                 showQR: false,
             });
@@ -266,271 +267,270 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ eventId, maxSongs = Infinity,
     };
 
     return (
-        <div className={`w-full`}>
-            {/* Temporizador visual fijo en la parte superior */}
-            {timeLeft > 0 && (
-                <motion.div
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={`fixed text-center top-4 left-1/2 transform -translate-x-1/2 z-40 px-4 py-2 rounded-full flex items-center gap-2 shadow-lg`}
-                >
-                    <Clock className="h-5 w-5" />
-                    <span className="font-medium">Espera {timeLeft}s para otra solicitud</span>
-                </motion.div>
-            )}
-
+        <div className="flex flex-col h-full bg-gradient-to-b from-gray-900 to-gray-800 text-white rounded-xl overflow-hidden shadow-xl">
             {/* Encabezado */}
-            <div className="text-center mb-6">
-                <div className="flex items-center justify-center gap-2 mb-2">
-                    <h2 className="text-xl font-bold">Pon tu canción EN CABINA</h2>
+            <div className="p-5 bg-gray-800 border-b border-gray-700">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-2xl font-bold">Solicitud de Música</h1>
+                        <p className="text-gray-400 text-sm">
+                            {maxSongs !== Infinity ? (
+                                `${songsRequested}/${maxSongs} canciones solicitadas`
+                            ) : (
+                                "Pide tus canciones favoritas"
+                            )}
+                        </p>
+                    </div>
+                    <div className="bg-purple-600 p-2 rounded-full">
+                        <Music className="h-6 w-6" />
+                    </div>
                 </div>
-                <p className={`text-sm`}>
-                    Busca y envía tus canciones favoritas al DJ
-                </p>
+            </div>
 
-                {/* Mostrar contador de canciones si hay límite */}
-                {maxSongs !== Infinity && (
-                    <p className={`text-sm mt-2`}>
-                        Canciones solicitadas: {songsRequested}/{maxSongs}
-                    </p>
+            {/* Barra de búsqueda */}
+            <div className="p-4 bg-gray-800">
+                <div className="relative">
+                    <input
+                        ref={searchInputRef}
+                        type="text"
+                        placeholder="Buscar canciones o artistas..."
+                        value={queryMusic}
+                        onChange={(e) => setQuery(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && searchMusic()}
+                        className="w-full bg-gray-700 rounded-full py-3 px-5 pr-12 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                    <button
+                        onClick={searchMusic}
+                        disabled={!queryMusic || isLoading}
+                        className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-purple-600 p-2 rounded-full disabled:opacity-50"
+                    >
+                        {isLoading ? (
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                        ) : (
+                            <Search className="h-5 w-5" />
+                        )}
+                    </button>
+                </div>
+            </div>
+
+            {/* Alertas */}
+            <AnimatePresence>
+                {showLimitAlert && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        className="bg-red-600 text-white text-center py-2 px-4 text-sm flex items-center justify-center gap-2"
+                    >
+                        <AlertCircle className="h-4 w-4" />
+                        <span>Límite alcanzado ({maxSongs} canciones)</span>
+                    </motion.div>
+                )}
+
+                {showTimeAlert && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        className="bg-yellow-600 text-white text-center py-2 px-4 text-sm flex items-center justify-center gap-2"
+                    >
+                        <Clock className="h-4 w-4" />
+                        <span>Espera {timeLeft} segundos antes de otra solicitud</span>
+                    </motion.div>
+                )}
+
+                {timeLeft > 0 && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-gray-700 text-white text-center py-2 px-4 text-sm flex items-center justify-center gap-2"
+                    >
+                        <Clock className="h-4 w-4" />
+                        <span>Tiempo de espera: {timeLeft}s restantes</span>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Contenedor de resultados */}
+            <div className="flex-1 overflow-y-auto p-4">
+                {isLoading ? (
+                    <div className="flex flex-col items-center justify-center h-full">
+                        <Loader2 className="h-8 w-8 animate-spin text-purple-500 mb-4" />
+                        <p className="text-gray-400">Buscando canciones...</p>
+                    </div>
+                ) : results.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full text-center p-4">
+                        <Music className="h-16 w-16 text-gray-600 mb-4" />
+                        <h3 className="text-xl font-medium text-gray-400">Encuentra tus canciones favoritas</h3>
+                        <p className="text-gray-500 mt-2">Busca artistas o canciones para hacer tu pedido</p>
+                    </div>
+                ) : (
+                    <div className="space-y-3">
+                        {results.map((track) => (
+                            <div key={track.id} className="bg-gray-700 rounded-lg overflow-hidden shadow">
+                                {/* Información de la canción */}
+                                <div className="p-4 flex items-center gap-4">
+                                    <div className="relative">
+                                        <Image
+                                            src={track.album.cover_small.replace("56x56", "250x250")}
+                                            alt={track.title}
+                                            width={250}
+                                            height={250}
+                                            className="w-14 h-14 rounded-lg object-cover"
+                                        />
+                                        <button
+                                            onClick={() => togglePlay(track)}
+                                            disabled={loadingTrack === track.id}
+                                            className={`absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg transition-opacity ${playingTrack === track.id ? 'opacity-100' : 'opacity-0 hover:opacity-100'}`}
+                                        >
+                                            {loadingTrack === track.id ? (
+                                                <Loader2 className="h-6 w-6 animate-spin text-white" />
+                                            ) : playingTrack === track.id ? (
+                                                <Pause className="h-6 w-6 text-white" />
+                                            ) : (
+                                                <Play className="h-6 w-6 text-white" />
+                                            )}
+                                        </button>
+                                    </div>
+
+                                    <div className="flex-1 min-w-0">
+                                        <h3 className="font-medium truncate">{track.title}</h3>
+                                        <p className="text-sm text-gray-400 truncate">{track.artist.name}</p>
+
+                                        {/* Barra de progreso */}
+                                        {playingTrack === track.id && (
+                                            <div className="mt-2 bg-gray-600 rounded-full h-1 overflow-hidden">
+                                                <div
+                                                    className="h-full bg-purple-500"
+                                                    style={{ width: `${progress}%` }}
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => toggleMessageInput(track.id)}
+                                            className="p-2 text-gray-400 hover:text-white transition-colors"
+                                        >
+                                            <MessageSquarePlus className="h-5 w-5" />
+                                        </button>
+
+                                        <button
+                                            onClick={() => sendToDJ(track)}
+                                            disabled={
+                                                sendingTrack === track.id ||
+                                                songsRequested >= maxSongs ||
+                                                (lastRequestTime !== null && timeLeft > 0)
+                                            }
+                                            className={`p-2 rounded-full ${songsRequested >= maxSongs || (lastRequestTime && timeLeft > 0)
+                                                ? "bg-gray-600 text-gray-500 cursor-not-allowed"
+                                                : "bg-purple-600 text-white hover:bg-purple-700"
+                                                } transition-colors`}
+                                        >
+                                            {sendingTrack === track.id ? (
+                                                <Loader2 className="h-5 w-5 animate-spin" />
+                                            ) : (
+                                                <Send className="h-5 w-5" />
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Input de mensaje */}
+                                {messageInputVisible === track.id && (
+                                    <motion.div
+                                        initial={{ opacity: 0, height: 0 }}
+                                        animate={{ opacity: 1, height: 'auto' }}
+                                        exit={{ opacity: 0, height: 0 }}
+                                        className="px-4 pb-4"
+                                    >
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                placeholder="Añade un mensaje para el DJ..."
+                                                value={messageText}
+                                                onChange={(e) => setMessageText(e.target.value)}
+                                                className="w-full bg-gray-800 text-white p-3 pr-10 rounded-lg focus:outline-none focus:ring-1 focus:ring-purple-500"
+                                            />
+                                            <button
+                                                onClick={() => toggleMessageInput(track.id)}
+                                                className="absolute right-3 top-3 text-gray-400 hover:text-white"
+                                            >
+                                                <X className="h-5 w-5" />
+                                            </button>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </div>
+                        ))}
+                        <div ref={messagesEndRef} />
+                    </div>
                 )}
             </div>
 
-            {/* Alerta de límite alcanzado */}
-            {showLimitAlert && (
-                <motion.div
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    className={`mb-4 p-3 rounded-lg flex items-center gap-2`}
-                >
-                    <AlertCircle className="h-5 w-5" />
-                    <span>Límite de canciones alcanzado ({maxSongs} canciones)</span>
-                </motion.div>
-            )}
-
-            {/* Alerta de tiempo de espera */}
-            {showTimeAlert && (
-                <motion.div
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    className={`mb-4 p-3 rounded-lg flex items-center gap-2`}
-                >
-                    <Clock className="h-5 w-5" />
-                    <span>Espera {timeLeft} segundos antes de solicitar otra canción</span>
-                </motion.div>
-            )}
-
             {/* Modal de confirmación */}
-            {showModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className={`rounded-xl p-6 max-w-md w-full`}
-                    >
-                        <div className="text-center">
-                            <CheckCircle className="h-12 w-12 mx-auto mb-4 text-green-500" />
-                            <h3 className="text-xl font-bold mb-2">{modalContent.title}</h3>
-                            <p className="mb-4">{modalContent.message}</p>
+            <AnimatePresence>
+                {showModal && (
+                    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.9 }}
+                            className="bg-gray-800 rounded-xl p-6 max-w-sm w-full shadow-xl border border-gray-700"
+                        >
+                            <div className="text-center">
+                                <div className="bg-purple-600/20 p-3 rounded-full w-max mx-auto mb-4">
+                                    <CheckCircle className="h-8 w-8 text-purple-400" />
+                                </div>
+                                <h3 className="text-xl font-bold mb-2">{modalContent.title}</h3>
+                                <p className="mb-6 text-gray-400">{modalContent.message}</p>
 
-                            {/* Mostrar QR si es necesario */}
-                            {modalContent.showQR && (
-                                <>
-                                    <Image
-                                        src={qrPaymentUrl!}
-                                        alt="Código QR para colaboración"
-                                        className="mx-auto w-48 h-48 border border-gray-300 rounded-lg mb-4"
-                                        width={192}
-                                        height={192}
-                                    />
-                                    <div className="flex justify-center gap-4">
-                                        <button
-                                            onClick={() => {
-                                                handlePaymentConfirmation(false);
-                                                closeModal();
-                                            }}
-                                            className={`px-4 py-2 rounded-lg transition-colors`}
-                                        >
-                                            No, gracias
-                                        </button>
-                                        <button
-                                            onClick={() => {
-                                                handlePaymentConfirmation(true);
-                                                closeModal();
-                                            }}
-                                            className={`px-4 py-2 rounded-lg text-white transition-colors`}
-                                        >
-                                            Sí, colaborar
-                                        </button>
-                                    </div>
-                                </>
-                            )}
+                                {modalContent.showQR && (
+                                    <>
+                                        <Image
+                                            src={qrPaymentUrl!}
+                                            alt="Código QR para contribución"
+                                            className="mx-auto w-48 h-48 border border-gray-700 rounded-lg mb-6"
+                                            width={192}
+                                            height={192}
+                                        />
+                                        <div className="flex justify-center gap-3">
+                                            <button
+                                                onClick={() => {
+                                                    handlePaymentConfirmation(false);
+                                                    closeModal();
+                                                }}
+                                                className="px-4 py-2 rounded-lg bg-gray-700 text-white hover:bg-gray-600 transition-colors flex-1"
+                                            >
+                                                Saltar
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    handlePaymentConfirmation(true);
+                                                    closeModal();
+                                                }}
+                                                className="px-4 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition-colors flex-1"
+                                            >
+                                                Contribuir
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
 
-                            {!modalContent.showQR && (
-                                <button
-                                    onClick={closeModal}
-                                    className={`mt-4 px-6 py-2 rounded-lg text-white transition-colors`}
-                                >
-                                    Aceptar
-                                </button>
-                            )}
-                        </div>
-                    </motion.div>
-                </div>
-            )}
-
-            {/* Barra de búsqueda */}
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-                className={`flex items-center rounded-xl overflow-hidden shadow-sm mb-6`}
-            >
-                <input
-                    type="text"
-                    placeholder="Buscar canción o artista..."
-                    value={queryMusic}
-                    onChange={(e) => setQuery(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && searchMusic()}
-                    className={`px-4 py-3 w-full focus:outline-none`}
-                />
-                <button
-                    onClick={searchMusic}
-                    disabled={!queryMusic || isLoading}
-                    className={`p-2 mx-2 rounded-full h-full transition-colors`}
-                >
-                    {isLoading ? (
-                        <Loader2 className="h-5 w-5 animate-spin text-white" />
-                    ) : (
-                        <Search className="h-5 w-5 text-white" />
-                    )}
-                </button>
-            </motion.div>
-
-            {/* Estado de carga */}
-            {isLoading && (
-                <div className="flex flex-col items-center justify-center py-8">
-                    <Loader2 className={`h-8 w-8 animate-spin mb-2`} />
-                    <p className="">Buscando canciones...</p>
-                </div>
-            )}
-
-            {/* Lista de resultados */}
-            <div className="space-y-3">
-                {results?.map((track, index) => (
-                    <motion.div
-                        key={track.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.05 }}
-                        className={`rounded-xl shadow-sm border`}
-                    >
-                        {/* Contenido principal de la card */}
-                        <div className="flex items-center p-4">
-                            {/* Portada del álbum */}
-                            <Image
-                                width={56}
-                                height={56}
-                                src={track.album.cover_small}
-                                alt={track.title}
-                                className="w-14 h-14 rounded-lg shadow-md"
-                            />
-
-                            {/* Información de la canción */}
-                            <div className="ml-4 flex-1 min-w-0">
-                                <p className={`font-medium truncate`}>{track.title}</p>
-                                <p className={`text-sm truncate`}>{track.artist.name}</p>
-                            </div>
-
-                            {/* Botones de acción */}
-                            <div className="flex">
-                                {/* Botón de reproducción */}
-                                <button
-                                    onClick={() => togglePlay(track)}
-                                    disabled={loadingTrack === track.id}
-                                    className={`p-2 rounded-full transition-colors`}
-                                >
-                                    {loadingTrack === track.id ? (
-                                        <Loader2 className={`h-5 w-5 animate-spin`} />
-                                    ) : playingTrack === track.id ? (
-                                        <Pause className={`h-5 w-5`} />
-                                    ) : (
-                                        <Play className={`h-5 w-5`} />
-                                    )}
-                                </button>
-
-                                {/* Botón de mensaje */}
-                                <button
-                                    onClick={() => toggleMessageInput(track.id)}
-                                    className={`mr-2 p-2 rounded-full transition-colors`}
-                                >
-                                    <MessageSquarePlus className={`h-5 w-5`} />
-                                </button>
-
-                                {/* Botón de enviar */}
-                                <button
-                                    onClick={() => sendToDJ(track)}
-                                    disabled={
-                                        sendingTrack === track.id ||
-                                        songsRequested >= maxSongs ||
-                                        (lastRequestTime !== null && timeLeft > 0)
-                                    }
-                                    className={`p-2 rounded-full ${songsRequested >= maxSongs || (lastRequestTime && timeLeft > 0)
-                                        ? "bg-gray-400 cursor-not-allowed"
-                                        : "bg-gray-700 hover:bg-gray-600"
-                                        } text-white transition-colors`}
-                                >
-                                    {sendingTrack === track.id ? (
-                                        <Loader2 className="h-5 w-5 animate-spin" />
-                                    ) : (
-                                        <Send className="h-5 w-5" />
-                                    )}
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Input de mensaje */}
-                        {messageInputVisible === track.id && (
-                            <motion.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                exit={{ opacity: 0, height: 0 }}
-                                className="px-4 pb-4"
-                            >
-                                <div className="relative mt-2">
-                                    <input
-                                        type="text"
-                                        placeholder="Añade un mensaje para el DJ..."
-                                        value={messageText}
-                                        onChange={(e) => setMessageText(e.target.value)}
-                                        className={`w-full px-4 py-2 pr-10 rounded-lg border focus:outline-none focus:ring-2`}
-                                    />
+                                {!modalContent.showQR && (
                                     <button
-                                        onClick={() => toggleMessageInput(track.id)}
-                                        className="absolute right-2 top-2 p-1 rounded-full hover:bg-gray-600 hover:bg-opacity-30"
+                                        onClick={closeModal}
+                                        className="w-full px-6 py-3 rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition-colors"
                                     >
-                                        <X className="h-4 w-4 text-gray-500" />
+                                        ¡Entendido!
                                     </button>
-                                </div>
-                            </motion.div>
-                        )}
-
-                        {/* Barra de progreso */}
-                        {playingTrack === track.id && (
-                            <div className="px-4 pb-2">
-                                <div className="h-1 w-full bg-gray-600 dark:bg-gray-400 rounded-full overflow-hidden">
-                                    <div
-                                        className="h-full bg-gray-200 dark:bg-gray-700"
-                                        style={{ width: `${progress}%` }}
-                                    />
-                                </div>
+                                )}
                             </div>
-                        )}
-                    </motion.div>
-                ))}
-            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

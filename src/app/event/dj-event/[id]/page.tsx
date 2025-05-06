@@ -3,10 +3,9 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { db, collection, query, where, getDocs, onSnapshot, doc, getDoc } from "@/../lib/firebase";
 import Image from "next/image";
-import { BadgeCheck, Check, Instagram, PartyPopper, MapPin, Disc3 } from "lucide-react";
+import { BadgeCheck, Check, Instagram, PartyPopper, Music, MapPin, Disc3 } from "lucide-react";
 import SearchMusic from "@/components/SearchMusic";
 
-// Tipos para los datos de los eventos y DJs
 interface Evento {
     nombre: string;
     lugar: string;
@@ -29,8 +28,6 @@ interface Dj {
 
 type DjPlan = "bassline" | "drop pro" | "mainstage" | "other";
 
-/* interface EventDetailProps { } */
-
 export default function EventDetail() {
     const { id } = useParams();
     const [evento, setEvento] = useState<Evento | null>(null);
@@ -44,13 +41,10 @@ export default function EventDetail() {
     const [showLocationModal, setShowLocationModal] = useState<boolean>(false);
     const [isLocationVerified, setIsLocationVerified] = useState<boolean>(false);
 
-    // Variables de seguimiento para el console.log
     const [prevQrPaymentUrl, setPrevQrPaymentUrl] = useState<string | null>(null);
     const [prevAcceptPayment, setPrevAcceptPayment] = useState<boolean>(false);
 
-    // Memoize the clean ID to avoid recalculating
     const cleanId = useMemo(() => {
-        // Asegurarse de que id sea una cadena de texto
         if (typeof id === 'string' && (id.startsWith("DJ-") || id.startsWith("EV-"))) {
             return id.slice(3);
         }
@@ -65,22 +59,20 @@ export default function EventDetail() {
                 setDj(djSnapshot.data() as Dj);
             }
 
-            // Obtener el plan del DJ desde la colección users
             const usersRef = collection(db, "users");
             const q = query(usersRef, where("uid", "==", djId));
             const querySnapshot = await getDocs(q);
 
             if (!querySnapshot.empty) {
                 const userDoc = querySnapshot.docs[0];
-                setDjPlan(userDoc.data().plan || "bassline"); // Default a bassline si no hay plan
-                setQrPaymentUrl(userDoc.data().qrPaymentUrl || null); // Obtener el QR de pago
-                setAcceptPayment(userDoc.data().showQR || false); // Obtener si acepta pagos
+                setDjPlan(userDoc.data().plan || "bassline");
+                setQrPaymentUrl(userDoc.data().qrPaymentUrl || null);
+                setAcceptPayment(userDoc.data().showQR || false);
 
-                // Solo loguear cuando los valores hayan cambiado
                 if (userDoc.data().qrPaymentUrl !== prevQrPaymentUrl || userDoc.data().showQR !== prevAcceptPayment) {
                     console.log(userDoc.data().qrPaymentUrl, userDoc.data().showQR);
-                    setPrevQrPaymentUrl(userDoc.data().qrPaymentUrl); // Actualizar valor previo de qrPaymentUrl
-                    setPrevAcceptPayment(userDoc.data().showQR); // Actualizar valor previo de acceptPayment
+                    setPrevQrPaymentUrl(userDoc.data().qrPaymentUrl);
+                    setPrevAcceptPayment(userDoc.data().showQR);
                 }
 
                 if (userDoc.data().profileUrl && userDoc.data().showProfile === true) {
@@ -98,7 +90,7 @@ export default function EventDetail() {
 
     useEffect(() => {
         console.log("qrPaymentUrl or acceptPayment changed:", qrPaymentUrl, acceptPayment);
-    }, [qrPaymentUrl, acceptPayment]); // Este useEffect se ejecutará cuando qrPaymentUrl o acceptPayment cambien.    
+    }, [qrPaymentUrl, acceptPayment]);
 
     const fetchEventAndDj = useCallback(async () => {
         if (!id) return;
@@ -107,18 +99,15 @@ export default function EventDetail() {
             const eventosRef = collection(db, "eventos");
 
             if (typeof id === 'string' && id.startsWith("EV-")) {
-                // Caso para códigos QR (EV-)
                 const q = query(eventosRef, where("qrCode", "==", cleanId));
                 const querySnapshot = await getDocs(q);
 
                 if (querySnapshot.empty) {
-                    /* router.replace("/not-found"); */
                     return;
                 }
 
                 const eventoEnVivo = querySnapshot.docs.find(doc => doc.data().estado === "en vivo");
                 if (!eventoEnVivo) {
-                    /* router.replace("/not-found"); */
                     return;
                 }
 
@@ -126,7 +115,6 @@ export default function EventDetail() {
                 setEventId(eventoEnVivo.id);
                 await fetchDjData(eventoEnVivo.data().djId);
             } else {
-                // Caso para DJs (DJ- o sin prefijo)
                 const q = typeof id === 'string' && id.startsWith("DJ-")
                     ? query(
                         eventosRef,
@@ -137,32 +125,26 @@ export default function EventDetail() {
 
                 const unsubscribe = onSnapshot(q, async (querySnapshot) => {
                     if (querySnapshot.empty) {
-                        /* router.replace("/not-found"); */
                         return;
                     }
 
                     const eventoEnVivo = querySnapshot.docs.find(doc => doc.data().estado === "en vivo");
                     if (!eventoEnVivo) {
-                        /* router.replace("/not-found"); */
                         return;
                     }
 
                     setEvento(eventoEnVivo.data() as Evento);
                     setEventId(eventoEnVivo.id);
 
-                    // Solo buscamos el DJ si no tenemos la información ya cargada,
-                    // o si el DJ actual no es el que está asignado al evento en vivo.
                     if (typeof id === 'string' && (!dj || dj.id !== eventoEnVivo.data().djId)) {
                         await fetchDjData(eventoEnVivo.data().djId);
                     }
-
                 });
 
                 return () => unsubscribe();
             }
         } catch (error) {
             console.error("Error obteniendo evento:", error);
-            /* router.replace("/not-found"); */
         }
     }, [id, cleanId, fetchDjData, dj]);
 
@@ -170,7 +152,6 @@ export default function EventDetail() {
         fetchEventAndDj();
     }, [fetchEventAndDj]);
 
-    // Verificación de ubicación persistente
     useEffect(() => {
         const storedLocationStatus = localStorage.getItem(`locationVerified_${id}`);
         if (storedLocationStatus === "true") {
@@ -234,133 +215,134 @@ export default function EventDetail() {
         });
     }, [evento, id]);
 
-    // Función para extraer el nombre de usuario de Instagram
     const extractInstagramUsername = useCallback((url: string) => {
         if (!url) return "No especificado";
         const match = url.match(/instagram\.com\/([a-zA-Z0-9_.]+)/);
         return match ? `@${match[1]}` : "No especificado";
     }, []);
 
-    // Función para extraer el nombre de usuario de Tiktok
     const extractTiktokUsername = useCallback((url: string) => {
         if (!url) return "No especificado";
-
         const match = url.match(/tiktok\.com\/@?([a-zA-Z0-9_.]+)/);
         return match ? `@${match[1]}` : "No especificado";
     }, []);
 
-    // Función para extraer el nombre de usuario de Facebook
     const extractFacebookUsername = useCallback((url: string) => {
         if (!url) return "No especificado";
-
         const match = url.match(/facebook\.com\/([a-zA-Z0-9_.]+)/);
         return match ? `@${match[1]}` : "No especificado";
     }, []);
 
     if (!evento) {
         return (
-            <div className="flex items-center justify-center min-h-screen bg-gray-50 transition-colors duration-300">
+            <div className="flex items-center justify-center min-h-screen bg-gray-900">
                 <div className="animate-pulse flex flex-col items-center">
-                    <Disc3 className="h-12 w-12 text-gray-600 animate-spin" />
-                    <p className="text-gray-600">Cargando evento...</p>
+                    <Disc3 className="h-12 w-12 text-purple-500 animate-spin" />
+                    <p className="text-gray-400 mt-2">Cargando evento...</p>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className={`min-h-screen`}>
-            {/* Contenido principal */}
-            <main className="max-w-2xl mt-4 mx-auto px-4 pb-20 relative">
-                {/* Banner */}
-                <div className="w-full h-40 rounded-xl overflow-hidden bg-gray-200 dark:bg-gray-800">
-                    <Image
-                        src={bannerUrl || "/images/banner/banner-dj.png"}
-                        alt="Banner"
-                        width={1000}
-                        height={1000}
-                        className="object-cover w-full h-full"
-                    />
-                </div>
+        <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 text-white">
+            {/* Banner con overlay */}
+            <div className="relative h-48 w-full overflow-hidden">
+                <Image
+                    src={bannerUrl || "/images/banner/banner-dj.png"}
+                    alt="Banner del evento"
+                    width={1200}
+                    height={400}
+                    className="object-cover w-full h-full"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-gray-900 to-transparent" />
+            </div>
 
-                {/* Avatar + Info */}
-                <div className="relative flex flex-col items-center -mt-12 left-4 pr-8">
-                    <div className="w-24 h-24 rounded-full border-4 border-white overflow-hidden shadow-md">
-                        <Image
-                            src={profileUrl || "/images/imageProfile.png"}
-                            alt="Avatar"
-                            width={100}
-                            height={100}
-                        />
+            {/* Contenido principal */}
+            <div className="relative px-4 pb-20 max-w-2xl mx-auto -mt-16">
+                {/* Perfil del DJ */}
+                <div className="flex flex-col items-center">
+                    <div className="relative -mt-16">
+                        <div className="w-28 h-28 rounded-full border-4 border-gray-800 overflow-hidden shadow-xl">
+                            <Image
+                                src={profileUrl || "/images/imageProfile.png"}
+                                alt="Foto del DJ"
+                                width={112}
+                                height={112}
+                                className="object-cover w-full h-full"
+                            />
+                        </div>
+                        <div className="absolute bottom-0 right-0 bg-purple-600 p-1 rounded-full">
+                            <Music className="h-5 w-5 text-white" />
+                        </div>
                     </div>
-                    <div className="mt-2 text-center">
+
+                    <div className="mt-4 text-center">
                         <div className="flex items-center justify-center gap-2">
                             <h1 className="text-2xl font-bold">{dj?.nombreDJ || "DJ"}</h1>
-                            <BadgeCheck className="w-5 h-5 text-sky-500" />
+                            <BadgeCheck className="w-5 h-5 text-purple-400" />
                         </div>
-                        <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">{dj?.descripcion || "Diseñando ritmos que te hacen vibrar."}</p>
+                        <p className="text-gray-400 text-sm mt-1 max-w-md">
+                            {dj?.descripcion || "Diseñando ritmos que te hacen vibrar."}
+                        </p>
                     </div>
 
-                    {/* Stats */}
-                    <div className="flex flex-col justify-center items-center">
-                        <div className="flex flex-wrap justify-center items-center space-x-4 py-4">
-                            <div>
-                                {dj?.instagram && (
-                                    <a
-                                        href={dj?.instagram || "#"}
-                                        target="_blank"
-                                        className="flex items-center gap-1 text-blue-600 hover:text-blue-700 dark:text-indigo-400 dark:hover:text-indigo-300"
-                                    >
-                                        <Instagram className="w-4 h-4" />
-                                        <span>{extractInstagramUsername(dj?.instagram || "")}</span>
-                                    </a>
-                                )}
-                            </div>
+                    {/* Redes sociales */}
+                    <div className="flex gap-4 mt-4">
+                        {dj?.instagram && (
+                            <a
+                                href={dj.instagram}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-2 bg-gray-800 rounded-full hover:bg-gray-700 transition-colors"
+                            >
+                                <Instagram className="h-5 w-5 text-pink-500" />
+                            </a>
+                        )}
+                        {dj?.tiktok && (
+                            <a
+                                href={dj.tiktok}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-2 bg-gray-800 rounded-full hover:bg-gray-700 transition-colors"
+                            >
+                                <svg className="h-5 w-5 text-black dark:text-white" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z" />
+                                </svg>
+                            </a>
+                        )}
+                        {dj?.facebook && (
+                            <a
+                                href={dj.facebook}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-2 bg-gray-800 rounded-full hover:bg-gray-700 transition-colors"
+                            >
+                                <svg className="h-5 w-5 text-blue-500" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z" />
+                                </svg>
+                            </a>
+                        )}
+                    </div>
 
-                            <div>
-                                {dj?.tiktok && (
-                                    <a
-                                        href={dj?.tiktok || "#"}
-                                        target="_blank"
-                                        className="flex items-center gap-1 text-blue-600 hover:text-blue-700 dark:text-indigo-400 dark:hover:text-indigo-300"
-                                    >
-                                        <Instagram className="w-4 h-4" />
-                                        <span>{extractTiktokUsername(dj?.tiktok || "")}</span>
-                                    </a>
-                                )}
-                            </div>
-
-                            <div>
-                                {dj?.facebook && (
-                                    <a
-                                        href={dj?.facebook || "#"}
-                                        target="_blank"
-                                        className="flex items-center gap-1 text-blue-600 hover:text-blue-700 dark:text-indigo-400 dark:hover:text-indigo-300"
-                                    >
-                                        <Instagram className="w-4 h-4" />
-                                        <span>{extractFacebookUsername(dj?.facebook || "")}</span>
-                                    </a>
-                                )}
-                            </div>
+                    {/* Info del evento */}
+                    <div className="mt-6 flex flex-wrap justify-center gap-3">
+                        <div className="flex items-center gap-2 bg-gray-800 px-4 py-2 rounded-full">
+                            <PartyPopper className="h-4 w-4 text-purple-400" />
+                            <span className="font-medium text-sm">{evento.nombre || "Evento sin título"}</span>
                         </div>
-                        <div className="flex flex-wrap items-center justify-center text-center gap-4">
-                            <div className="flex items-center gap-1 border px-2 py-1 rounded-full">
-                                <PartyPopper className="w-4 h-4" />
-                                <span className="font-semibold text-black text-sm">{evento?.nombre || "Evento sin título"}</span>
-                            </div>
-                            <div className="flex items-center gap-1 text-sm text-white border border-black bg-black px-2 py-1 rounded-full">
-                                <MapPin className="w-4 h-4" />
-                                <span>{evento?.lugar || "Ubicación no especificada"}</span>
-                            </div>
+                        <div className="flex items-center gap-2 bg-gray-800 px-4 py-2 rounded-full">
+                            <MapPin className="h-4 w-4 text-purple-400" />
+                            <span className="text-sm">{evento.lugar || "Ubicación no especificada"}</span>
                         </div>
                     </div>
                 </div>
 
                 {/* Sección de solicitud de música */}
-                <section className={`rounded-xl px-4 transition-colors duration-300 mt-8 shadow py-4`}>
+                <div className="mt-8 bg-gray-800 rounded-xl p-6 shadow-lg">
                     {isLocationVerified && evento.ubicacion != null ? (
                         <>
-                            <div className="flex items-center justify-center mb-6 text-green-600 dark:text-green-400">
+                            <div className="flex items-center justify-center gap-2 mb-6 text-green-400">
                                 <Check className="h-5 w-5" />
                                 <span className="font-medium">Ubicación verificada</span>
                             </div>
@@ -368,24 +350,23 @@ export default function EventDetail() {
                                 eventId={eventId || ""}
                                 qrPaymentUrl={qrPaymentUrl || ""}
                                 acceptPayment={acceptPayment}
-                                /* darkMode={darkMode} */
                                 maxSongs={
                                     djPlan === "bassline" ? 50 :
                                         djPlan === "drop pro" ? 100 :
-                                            Infinity // mainstage o cualquier otro caso
+                                            Infinity
                                 }
                             />
                         </>
                     ) : evento.ubicacion != null ? (
                         <>
-                            <div className="text-center mb-6">
-                                <h3 className={`text-lg font-bold mb-2 `}>Verifica tu ubicación</h3>
-                                <p className={`text-sm mb-4`}>
+                            <div className="text-center">
+                                <h3 className="text-lg font-bold mb-2">Verifica tu ubicación</h3>
+                                <p className="text-gray-400 mb-6">
                                     Necesitamos confirmar que estás en el evento para solicitar canciones.
                                 </p>
                                 <button
                                     onClick={() => setShowLocationModal(true)}
-                                    className={`w-full py-3 rounded-lg font-medium bg-indigo-600 hover:bg-indigo-700 text-white transition-colors duration-200 flex items-center justify-center gap-2`}
+                                    className="w-full py-3 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-medium transition-colors flex items-center justify-center gap-2"
                                 >
                                     <MapPin className="h-5 w-5" />
                                     Verificar ubicación
@@ -397,40 +378,39 @@ export default function EventDetail() {
                             eventId={eventId || ""}
                             qrPaymentUrl={qrPaymentUrl || ""}
                             acceptPayment={acceptPayment}
-                            /* darkMode={darkMode} */
                             maxSongs={
                                 djPlan === "bassline" ? 50 :
                                     djPlan === "drop pro" ? 100 :
-                                        Infinity // mainstage o cualquier otro caso
+                                        Infinity
                             }
                         />
                     )}
-                </section>
-            </main>
+                </div>
+            </div>
 
             {/* Modal de ubicación */}
             {showLocationModal && (
-                <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4">
-                    <div className={`rounded-xl shadow-xl p-6 w-full max-w-md transition-all duration-300`}>
+                <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+                    <div className="bg-gray-800 rounded-xl p-6 max-w-sm w-full border border-gray-700">
                         <div className="text-center mb-6">
-                            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-indigo-100 dark:bg-indigo-900 mb-4">
-                                <MapPin className="h-6 w-6 text-indigo-600 dark:text-indigo-300" />
+                            <div className="mx-auto bg-purple-600/20 p-3 rounded-full w-max mb-4">
+                                <MapPin className="h-6 w-6 text-purple-400" />
                             </div>
-                            <h3 className={`text-xl font-bold mb-2`}>Verifica tu ubicación</h3>
-                            <p className={`text-sm`}>
+                            <h3 className="text-xl font-bold mb-2">Verifica tu ubicación</h3>
+                            <p className="text-gray-400">
                                 Necesitamos confirmar que estás en el evento para solicitar canciones.
                             </p>
                         </div>
-                        <div className="flex gap-4 mt-6">
+                        <div className="flex gap-4">
                             <button
                                 onClick={() => setShowLocationModal(false)}
-                                className={`flex-1 py-3 rounded-lg font-medium transition-colors duration-200`}
+                                className="flex-1 py-3 rounded-lg bg-gray-700 hover:bg-gray-600 transition-colors"
                             >
                                 Cancelar
                             </button>
                             <button
                                 onClick={handleRequestLocation}
-                                className={`flex-1 py-3 rounded-lg font-medium bg-indigo-600 hover:bg-indigo-700 text-white transition-colors duration-200 flex items-center justify-center gap-2`}
+                                className="flex-1 py-3 rounded-lg bg-purple-600 hover:bg-purple-700 text-white transition-colors flex items-center justify-center gap-2"
                             >
                                 <Check className="h-5 w-5" />
                                 Verificar
