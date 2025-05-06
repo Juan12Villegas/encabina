@@ -215,7 +215,7 @@ export default function EventDetail() {
         });
     }, [evento, id]);
 
-    const extractInstagramUsername = useCallback((url: string) => {
+    /* const extractInstagramUsername = useCallback((url: string) => {
         if (!url) return "No especificado";
         const match = url.match(/instagram\.com\/([a-zA-Z0-9_.]+)/);
         return match ? `@${match[1]}` : "No especificado";
@@ -231,7 +231,7 @@ export default function EventDetail() {
         if (!url) return "No especificado";
         const match = url.match(/facebook\.com\/([a-zA-Z0-9_.]+)/);
         return match ? `@${match[1]}` : "No especificado";
-    }, []);
+    }, []); */
 
     if (!evento) {
         return (
