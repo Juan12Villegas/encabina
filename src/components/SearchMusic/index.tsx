@@ -267,9 +267,9 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ eventId, maxSongs = Infinity,
     };
 
     return (
-        <div className="flex flex-col h-full bg-gradient-to-b from-gray-900 to-gray-800 text-white rounded-xl overflow-hidden shadow-xl">
+        <div className="flex flex-col h-full bg-gradient-to-b text-white rounded-xl overflow-hidden">
             {/* Encabezado */}
-            <div className="p-5 bg-gray-800 border-b border-gray-700">
+            <div className="p-4 bg-gray-800 border-b border-gray-700">
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-bold">Solicitud de Música</h1>
@@ -288,7 +288,7 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ eventId, maxSongs = Infinity,
             </div>
 
             {/* Barra de búsqueda */}
-            <div className="p-4 bg-gray-800">
+            <div className="py-4 px-2 bg-gray-800">
                 <div className="relative">
                     <input
                         ref={searchInputRef}
@@ -320,7 +320,7 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ eventId, maxSongs = Infinity,
                         initial={{ opacity: 0, y: -20 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -20 }}
-                        className="bg-red-600 text-white text-center py-2 px-4 text-sm flex items-center justify-center gap-2"
+                        className="bg-red-600 px-2 text-white text-center py-2 px-4 text-sm flex items-center justify-center gap-2"
                     >
                         <AlertCircle className="h-4 w-4" />
                         <span>Límite alcanzado ({maxSongs} canciones)</span>
@@ -332,7 +332,7 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ eventId, maxSongs = Infinity,
                         initial={{ opacity: 0, y: -20 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -20 }}
-                        className="bg-yellow-600 text-white text-center py-2 px-4 text-sm flex items-center justify-center gap-2"
+                        className="bg-yellow-600 px-2 text-white text-center py-2 px-4 text-sm flex items-center justify-center gap-2 my-2"
                     >
                         <Clock className="h-4 w-4" />
                         <span>Espera {timeLeft} segundos antes de otra solicitud</span>
@@ -343,7 +343,7 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ eventId, maxSongs = Infinity,
                     <motion.div
                         initial={{ opacity: 0, y: -20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="bg-gray-700 text-white text-center py-2 px-4 text-sm flex items-center justify-center gap-2"
+                        className="bg-gray-700 px-2 text-white text-center py-2 px-4 text-sm flex items-center justify-center gap-2 my-2"
                     >
                         <Clock className="h-4 w-4" />
                         <span>Tiempo de espera: {timeLeft}s restantes</span>
@@ -352,7 +352,7 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ eventId, maxSongs = Infinity,
             </AnimatePresence>
 
             {/* Contenedor de resultados */}
-            <div className="flex-1 overflow-y-auto p-4">
+            <div className="flex-1 px-2 overflow-y-auto bg-gray-800">
                 {isLoading ? (
                     <div className="flex flex-col items-center justify-center h-full">
                         <Loader2 className="h-8 w-8 animate-spin text-purple-500 mb-4" />

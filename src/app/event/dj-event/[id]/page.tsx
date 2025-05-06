@@ -1,9 +1,9 @@
 "use client";
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { db, collection, query, where, getDocs, onSnapshot, doc, getDoc } from "@/../lib/firebase";
 import Image from "next/image";
-import { BadgeCheck, Check, Instagram, PartyPopper, Music, MapPin, Disc3 } from "lucide-react";
+import { BadgeCheck, Check, Instagram, PartyPopper, Music, MapPin, Disc3, QrCode } from "lucide-react";
 import SearchMusic from "@/components/SearchMusic";
 
 interface Evento {
@@ -30,6 +30,7 @@ type DjPlan = "bassline" | "drop pro" | "mainstage" | "other";
 
 export default function EventDetail() {
     const { id } = useParams();
+    const router = useRouter();
     const [evento, setEvento] = useState<Evento | null>(null);
     const [eventId, setEventId] = useState<string | null>(null);
     const [profileUrl, setProfileUrl] = useState<string | null>(null);
@@ -40,15 +41,26 @@ export default function EventDetail() {
     const [djPlan, setDjPlan] = useState<DjPlan | null>(null);
     const [showLocationModal, setShowLocationModal] = useState<boolean>(false);
     const [isLocationVerified, setIsLocationVerified] = useState<boolean>(false);
+    const [invalidCode, setInvalidCode] = useState<boolean>(false);
+    const [eventNotFound, setEventNotFound] = useState<boolean>(false);
+    const [loading, setLoading] = useState<boolean>(true);
 
     const [prevQrPaymentUrl, setPrevQrPaymentUrl] = useState<string | null>(null);
     const [prevAcceptPayment, setPrevAcceptPayment] = useState<boolean>(false);
 
     const cleanId = useMemo(() => {
-        if (typeof id === 'string' && (id.startsWith("DJ-") || id.startsWith("EV-"))) {
-            return id.slice(3);
+        if (typeof id === 'string') {
+            if (id.startsWith("DJ-") || id.startsWith("EV-")) {
+                return id.slice(3);
+            } else {
+                setInvalidCode(true);
+                setLoading(false);
+                return null;
+            }
         }
-        return id;
+        setInvalidCode(true);
+        setLoading(false);
+        return null;
     }, [id]);
 
     const fetchDjData = useCallback(async (djId: string) => {
@@ -70,7 +82,6 @@ export default function EventDetail() {
                 setAcceptPayment(userDoc.data().showQR || false);
 
                 if (userDoc.data().qrPaymentUrl !== prevQrPaymentUrl || userDoc.data().showQR !== prevAcceptPayment) {
-                    console.log(userDoc.data().qrPaymentUrl, userDoc.data().showQR);
                     setPrevQrPaymentUrl(userDoc.data().qrPaymentUrl);
                     setPrevAcceptPayment(userDoc.data().showQR);
                 }
@@ -93,7 +104,7 @@ export default function EventDetail() {
     }, [qrPaymentUrl, acceptPayment]);
 
     const fetchEventAndDj = useCallback(async () => {
-        if (!id) return;
+        if (!cleanId) return;
 
         try {
             const eventosRef = collection(db, "eventos");
@@ -103,17 +114,22 @@ export default function EventDetail() {
                 const querySnapshot = await getDocs(q);
 
                 if (querySnapshot.empty) {
+                    setEventNotFound(true);
+                    setLoading(false);
                     return;
                 }
 
                 const eventoEnVivo = querySnapshot.docs.find(doc => doc.data().estado === "en vivo");
                 if (!eventoEnVivo) {
+                    setEventNotFound(true);
+                    setLoading(false);
                     return;
                 }
 
                 setEvento(eventoEnVivo.data() as Evento);
                 setEventId(eventoEnVivo.id);
                 await fetchDjData(eventoEnVivo.data().djId);
+                setLoading(false);
             } else {
                 const q = typeof id === 'string' && id.startsWith("DJ-")
                     ? query(
@@ -125,11 +141,15 @@ export default function EventDetail() {
 
                 const unsubscribe = onSnapshot(q, async (querySnapshot) => {
                     if (querySnapshot.empty) {
+                        setEventNotFound(true);
+                        setLoading(false);
                         return;
                     }
 
                     const eventoEnVivo = querySnapshot.docs.find(doc => doc.data().estado === "en vivo");
                     if (!eventoEnVivo) {
+                        setEventNotFound(true);
+                        setLoading(false);
                         return;
                     }
 
@@ -139,12 +159,15 @@ export default function EventDetail() {
                     if (typeof id === 'string' && (!dj || dj.id !== eventoEnVivo.data().djId)) {
                         await fetchDjData(eventoEnVivo.data().djId);
                     }
+                    setLoading(false);
                 });
 
                 return () => unsubscribe();
             }
         } catch (error) {
             console.error("Error obteniendo evento:", error);
+            setEventNotFound(true);
+            setLoading(false);
         }
     }, [id, cleanId, fetchDjData, dj]);
 
@@ -158,6 +181,8 @@ export default function EventDetail() {
             setIsLocationVerified(true);
         }
     }, [id]);
+
+    const showErrorView = invalidCode || eventNotFound;
 
     const isWithinRadius = (lat1: number, lon1: number, lat2: number, lon2: number, radius: number) => {
         const toRad = (value: number) => (value * Math.PI) / 180;
@@ -232,6 +257,78 @@ export default function EventDetail() {
         const match = url.match(/facebook\.com\/([a-zA-Z0-9_.]+)/);
         return match ? `@${match[1]}` : "No especificado";
     }, []); */
+
+    if (showErrorView) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 p-4 text-center">
+                <div className="max-w-md mx-auto">
+                    <div className="bg-gray-800 p-6 rounded-xl shadow-lg mb-6">
+                        <div className="flex justify-center mb-4">
+                            <QrCode className="h-12 w-12 text-red-500" />
+                        </div>
+                        <h2 className="text-2xl font-bold text-white mb-3">
+                            {invalidCode ? "Código no válido" : "Evento no encontrado"}
+                        </h2>
+                        <p className="text-gray-400 mb-6">
+                            {invalidCode
+                                ? "El código escaneado no es válido. Por favor, escanea nuevamente el código QR del evento."
+                                : "El evento no existe o ya ha culminado. Por favor, verifica el código e intenta nuevamente."}
+                        </p>
+                        {/* <button
+                            onClick={() => router.push('/')}
+                            className="w-full py-3 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-medium transition-colors"
+                        >
+                            Volver al inicio
+                        </button> */}
+                    </div>
+
+                    <div className="text-gray-500 text-sm">
+                        <p>Si el problema persiste, contacta al organizador del evento.</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center min-h-screen bg-gray-900">
+                <div className="animate-pulse flex flex-col items-center">
+                    <Disc3 className="h-12 w-12 text-purple-500 animate-spin" />
+                    <p className="text-gray-400 mt-2">Cargando evento...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (invalidCode) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 p-4 text-center">
+                <div className="max-w-md mx-auto">
+                    <div className="bg-gray-800 p-6 rounded-xl shadow-lg mb-6">
+                        <div className="flex justify-center mb-4">
+                            <QrCode className="h-12 w-12 text-red-500" />
+                        </div>
+                        <h2 className="text-2xl font-bold text-white mb-3">Código no válido</h2>
+                        <p className="text-gray-400 mb-6">
+                            El código escaneado no es válido o el evento ha culminado.
+                            Por favor, escanea nuevamente el código QR del evento.
+                        </p>
+                        {/* <button
+                            onClick={() => router.push('/')}
+                            className="w-full py-3 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-medium transition-colors"
+                        >
+                            Volver al inicio
+                        </button> */}
+                    </div>
+
+                    <div className="text-gray-500 text-sm">
+                        <p>Si el problema persiste, contacta al organizador del evento.</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     if (!evento) {
         return (
@@ -339,7 +436,7 @@ export default function EventDetail() {
                 </div>
 
                 {/* Sección de solicitud de música */}
-                <div className="mt-8 bg-gray-800 rounded-xl p-6 shadow-lg">
+                <div className="mt-8 bg-gray-800 rounded-xl p-4 shadow-lg">
                     {isLocationVerified && evento.ubicacion != null ? (
                         <>
                             <div className="flex items-center justify-center gap-2 mb-6 text-green-400">
