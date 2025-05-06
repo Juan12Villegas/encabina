@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { db, collection, query, where, getDocs, onSnapshot, doc, getDoc } from "@/../lib/firebase";
 import Image from "next/image";
 import { BadgeCheck, Check, Instagram, PartyPopper, Music, MapPin, Disc3, QrCode } from "lucide-react";
@@ -30,7 +30,7 @@ type DjPlan = "bassline" | "drop pro" | "mainstage" | "other";
 
 export default function EventDetail() {
     const { id } = useParams();
-    const router = useRouter();
+    /* const router = useRouter(); */
     const [evento, setEvento] = useState<Evento | null>(null);
     const [eventId, setEventId] = useState<string | null>(null);
     const [profileUrl, setProfileUrl] = useState<string | null>(null);
