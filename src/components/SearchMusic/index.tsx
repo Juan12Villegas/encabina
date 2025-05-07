@@ -343,7 +343,7 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ eventId, maxSongs = Infinity,
                     <motion.div
                         initial={{ opacity: 0, y: -20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="bg-gray-700 px-2 text-white text-center py-2 px-4 text-sm flex items-center justify-center gap-2 my-2"
+                        className="bg-gray-700 text-white text-center py-2 mx-2 mb-4 rounded-lg text-sm flex items-center justify-center gap-2 my-2"
                     >
                         <Clock className="h-4 w-4" />
                         <span>Tiempo de espera: {timeLeft}s restantes</span>
