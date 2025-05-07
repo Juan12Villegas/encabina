@@ -448,8 +448,8 @@ export default function EventDetail() {
                                 qrPaymentUrl={qrPaymentUrl || ""}
                                 acceptPayment={acceptPayment}
                                 maxSongs={
-                                    djPlan === "bassline" ? 50 :
-                                        djPlan === "drop pro" ? 100 :
+                                    djPlan === "bassline" ? 100 :
+                                        djPlan === "drop pro" ? 500 :
                                             Infinity
                                 }
                             />
@@ -476,8 +476,8 @@ export default function EventDetail() {
                             qrPaymentUrl={qrPaymentUrl || ""}
                             acceptPayment={acceptPayment}
                             maxSongs={
-                                djPlan === "bassline" ? 50 :
-                                    djPlan === "drop pro" ? 100 :
+                                djPlan === "bassline" ? 100 :
+                                    djPlan === "drop pro" ? 500 :
                                         Infinity
                             }
                         />
