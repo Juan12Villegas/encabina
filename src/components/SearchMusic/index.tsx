@@ -273,13 +273,13 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ eventId, maxSongs = Infinity,
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-bold">Solicitud de Música</h1>
-                        {/* <p className="text-gray-400 text-sm">
+                        <p className="text-gray-400 text-sm">
                             {maxSongs !== Infinity ? (
                                 `${songsRequested}/${maxSongs} canciones solicitadas`
                             ) : (
                                 "Pide tus canciones favoritas"
                             )}
-                        </p> */}
+                        </p>
                     </div>
                     <div className="bg-purple-600 p-2 rounded-full">
                         <Music className="h-6 w-6" />
