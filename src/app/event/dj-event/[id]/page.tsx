@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { db, collection, query, where, getDocs, onSnapshot, doc, getDoc } from "@/../lib/firebase";
 import Image from "next/image";
-import { BadgeCheck, Check, Instagram, PartyPopper, Music, MapPin, Disc3, QrCode } from "lucide-react";
+import { BadgeCheck, Check, Instagram, PartyPopper, Music, MapPin, Disc3, QrCode, Fingerprint, Shield, Info, Ban, CheckCircle } from "lucide-react";
 import SearchMusic from "@/components/SearchMusic";
 
 interface Evento {
@@ -13,6 +13,7 @@ interface Evento {
     ubicacion: { latitud: number; longitud: number } | null;
     qrCode: string;
     djId: string;
+    aceptaCanciones: boolean;
 }
 
 interface Dj {
@@ -448,54 +449,98 @@ export default function EventDetail() {
                     </div>
                 </div>
 
-                {/* Sección de solicitud de música */}
-                <div className="mt-8 bg-gray-800 rounded-xl p-4 shadow-lg">
-                    {isLocationVerified && evento.ubicacion != null ? (
-                        <>
-                            <div className="flex items-center justify-center gap-2 mb-6 text-green-400">
-                                <Check className="h-5 w-5" />
-                                <span className="font-medium">Ubicación verificada</span>
-                            </div>
-                            <SearchMusic
-                                eventId={eventId || ""}
-                                qrPaymentUrl={qrPaymentUrl || ""}
-                                acceptPayment={acceptPayment}
-                                maxSongs={
-                                    djPlan === "bassline" ? 100 :
-                                        djPlan === "drop pro" ? 500 :
-                                            Infinity
-                                }
-                            />
-                        </>
-                    ) : evento.ubicacion != null ? (
-                        <>
-                            <div className="text-center">
-                                <h3 className="text-lg font-bold mb-2">Verifica tu ubicación</h3>
-                                <p className="text-gray-400 mb-6">
-                                    Necesitamos confirmar que estás en el evento para solicitar canciones.
-                                </p>
-                                <button
-                                    onClick={() => setShowLocationModal(true)}
-                                    className="w-full py-3 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-medium transition-colors flex items-center justify-center gap-2"
-                                >
-                                    <MapPin className="h-5 w-5" />
-                                    Verificar ubicación
-                                </button>
-                            </div>
-                        </>
-                    ) : (
-                        <SearchMusic
-                            eventId={eventId || ""}
-                            qrPaymentUrl={qrPaymentUrl || ""}
-                            acceptPayment={acceptPayment}
-                            maxSongs={
-                                djPlan === "bassline" ? 100 :
-                                    djPlan === "drop pro" ? 500 :
-                                        Infinity
-                            }
-                        />
-                    )}
-                </div>
+                {evento.aceptaCanciones ? (
+                    <div className="mt-8">
+                        {/* Sección de solicitud de música */}
+                        <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-6 shadow-lg border border-gray-700">
+                            {isLocationVerified && evento.ubicacion != null ? (
+                                <div className="space-y-6">
+                                    <div className="flex items-center justify-center gap-2 mb-4 p-3 bg-green-900/20 rounded-lg border border-green-800/50">
+                                        <CheckCircle className="h-5 w-5 text-green-400" />
+                                        <span className="font-medium text-green-400">Ubicación verificada</span>
+                                        <span className="text-xs text-green-300 ml-auto">✓ Seguridad activada</span>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <h3 className="text-xl font-bold text-white">Solicita tus canciones</h3>
+                                        <p className="text-gray-400 text-sm">
+                                            {djPlan === "bassline" ? "Puedes solicitar hasta 100 canciones" :
+                                                djPlan === "drop pro" ? "Puedes solicitar hasta 300 canciones" :
+                                                    "Solicita todas las canciones que quieras"}
+                                        </p>
+                                    </div>
+
+                                    <SearchMusic
+                                        eventId={eventId || ""}
+                                        qrPaymentUrl={qrPaymentUrl || ""}
+                                        acceptPayment={acceptPayment}
+                                        maxSongs={
+                                            djPlan === "bassline" ? 100 :
+                                                djPlan === "drop pro" ? 300 :
+                                                    Infinity
+                                        }
+                                    />
+                                </div>
+                            ) : evento.ubicacion != null ? (
+                                <div className="text-center p-4">
+                                    <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-purple-900/30 border border-purple-700/50">
+                                        <MapPin className="h-8 w-8 text-purple-400" />
+                                    </div>
+
+                                    <h3 className="text-xl font-bold text-white mb-2">Verifica tu ubicación</h3>
+                                    <p className="text-gray-400 mb-6 max-w-md mx-auto">
+                                        Para solicitar canciones en este evento, necesitamos confirmar que estás físicamente presente en la ubicación.
+                                    </p>
+
+                                    <button
+                                        onClick={() => setShowLocationModal(true)}
+                                        className="w-full max-w-xs mx-auto py-3 px-6 rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-medium transition-all duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-purple-500/20"
+                                    >
+                                        <Fingerprint className="h-5 w-5" />
+                                        Verificar ubicación ahora
+                                    </button>
+
+                                    <p className="text-xs text-gray-500 mt-4">
+                                        <Shield className="inline mr-1 h-3 w-3" />
+                                        Usamos verificación geográfica solo para confirmar tu asistencia al evento
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-2 text-green-400 bg-green-900/20 p-3 rounded-lg border border-green-800/50">
+                                        <Info className="h-5 w-5" />
+                                        <span className="text-sm">Evento sin ubicación definida - Solicitudes abiertas</span>
+                                    </div>
+
+                                    <SearchMusic
+                                        eventId={eventId || ""}
+                                        qrPaymentUrl={qrPaymentUrl || ""}
+                                        acceptPayment={acceptPayment}
+                                        maxSongs={
+                                            djPlan === "bassline" ? 100 :
+                                                djPlan === "drop pro" ? 300 :
+                                                    Infinity
+                                        }
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                ) : (
+                    <div className="mt-8 p-6 bg-gray-800/50 rounded-xl border border-gray-700 text-center">
+                        <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-gray-700">
+                            <Ban className="h-8 w-8 text-gray-400" />
+                        </div>
+                        <h3 className="text-xl font-bold text-white mb-2">Solicitudes desactivadas</h3>
+                        <p className="text-gray-400">
+                            El DJ ha deshabilitado las solicitudes de canciones para este evento.
+                        </p>
+                        <p className="text-sm text-gray-500 mt-2">
+                            Consulta con el organizador si necesitas sugerir alguna canción especial.
+                        </p>
+                    </div>
+                )}
+
             </div>
 
             {/* Modal de ubicación */}
