@@ -322,15 +322,6 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ eventId, maxSongs = Infinity,
         setShowModal(false);
     };
 
-    const formatTime = (date: Date) => {
-        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    };
-
-    const getExistingMessages = (trackId: string) => {
-        const request = existingRequests.find(req => req.trackId === trackId);
-        return request?.messages || [];
-    };
-
     return (
         <div className="flex flex-col h-full bg-gradient-to-b text-white rounded-xl overflow-hidden">
             {/* Encabezado */}
