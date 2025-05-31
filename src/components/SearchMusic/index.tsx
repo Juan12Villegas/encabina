@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Play, Pause, Loader2, Send, Search, MessageSquarePlus, AlertCircle, X, Clock, CheckCircle, Music } from "lucide-react";
 import { db, collection, addDoc, getDocs, query, where, doc, updateDoc, onSnapshot, QuerySnapshot } from "@../../../lib/firebase";
+import { Timestamp } from 'firebase/firestore';
 import Image from "next/image";
 
 interface MusicSearchProps {
@@ -11,6 +12,11 @@ interface MusicSearchProps {
     maxSongs?: number;
     qrPaymentUrl?: string;
     acceptPayment: boolean;
+}
+
+interface RequestMessage {
+    text: string;
+    timestamp: Timestamp; // O Date si ya lo conviertes aquí
 }
 
 interface Track {
@@ -102,7 +108,7 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ eventId, maxSongs = Infinity,
                     previewUrl: data.previewUrl,
                     timestamp: data.timestamp.toDate(),
                     count: data.count || 1,
-                    messages: data.messages?.map((msg: any) => ({
+                    messages: data.messages?.map((msg: RequestMessage) => ({
                         text: msg.text,
                         timestamp: msg.timestamp.toDate()
                     })) || [],
