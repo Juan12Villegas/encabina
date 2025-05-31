@@ -67,7 +67,6 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ eventId, maxSongs = Infinity,
         showQR: false,
     });
     const [selectedTrack, setSelectedTrack] = useState<Track | null>(null);
-    const [existingRequests, setExistingRequests] = useState<SongRequest[]>([]);
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -110,7 +109,6 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ eventId, maxSongs = Infinity,
                     paid: data.paid || false
                 });
             });
-            setExistingRequests(requests);
             setSongsRequested(querySnapshot.size);
         });
 
