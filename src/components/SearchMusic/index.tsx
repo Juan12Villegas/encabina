@@ -25,6 +25,25 @@ interface Track {
     preview: string;
 }
 
+interface Message {
+    text: string;
+    timestamp: Date;
+}
+
+interface SongRequest {
+    id: string;
+    eventId: string;
+    trackId: string;
+    title: string;
+    artist: string;
+    albumCover: string;
+    previewUrl: string;
+    timestamp: Date;
+    count: number;
+    messages: Message[];
+    paid: boolean;
+}
+
 const MusicSearch: React.FC<MusicSearchProps> = ({ eventId, maxSongs = Infinity, qrPaymentUrl, acceptPayment }) => {
     const [queryMusic, setQuery] = useState<string>("");
     const [results, setResults] = useState<Track[]>([]);
@@ -48,6 +67,7 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ eventId, maxSongs = Infinity,
         showQR: false,
     });
     const [selectedTrack, setSelectedTrack] = useState<Track | null>(null);
+    const [existingRequests, setExistingRequests] = useState<SongRequest[]>([]);
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -70,6 +90,27 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ eventId, maxSongs = Infinity,
         const q = query(requestRef, where("eventId", "==", eventId));
 
         const unsubscribe = onSnapshot(q, (querySnapshot: QuerySnapshot) => {
+            const requests: SongRequest[] = [];
+            querySnapshot.forEach((doc) => {
+                const data = doc.data();
+                requests.push({
+                    id: doc.id,
+                    eventId: data.eventId,
+                    trackId: data.trackId,
+                    title: data.title,
+                    artist: data.artist,
+                    albumCover: data.albumCover,
+                    previewUrl: data.previewUrl,
+                    timestamp: data.timestamp.toDate(),
+                    count: data.count || 1,
+                    messages: data.messages?.map((msg: any) => ({
+                        text: msg.text,
+                        timestamp: msg.timestamp.toDate()
+                    })) || [],
+                    paid: data.paid || false
+                });
+            });
+            setExistingRequests(requests);
             setSongsRequested(querySnapshot.size);
         });
 
@@ -203,9 +244,19 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ eventId, maxSongs = Infinity,
                 const existingData = existingDoc.data();
                 const docRef = doc(db, "event_requests", existingDoc.id);
 
+                const newMessage = messageText ? {
+                    text: messageText,
+                    timestamp: new Date()
+                } : null;
+
+                const updatedMessages = [
+                    ...(existingData.messages || []),
+                    ...(newMessage ? [newMessage] : [])
+                ];
+
                 await updateDoc(docRef, {
                     count: existingData.count + 1,
-                    ...(messageText && { message: messageText }),
+                    ...(newMessage && { messages: updatedMessages }),
                     ...(withPayment && { paid: true }),
                 });
 
@@ -216,6 +267,11 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ eventId, maxSongs = Infinity,
                     showQR: false,
                 });
             } else {
+                const newMessage = messageText ? {
+                    text: messageText,
+                    timestamp: new Date()
+                } : null;
+
                 await addDoc(requestRef, {
                     eventId: eventId,
                     trackId: track.id,
@@ -225,7 +281,7 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ eventId, maxSongs = Infinity,
                     previewUrl: track.preview,
                     timestamp: new Date(),
                     count: 1,
-                    message: messageText || null,
+                    messages: newMessage ? [newMessage] : [],
                     paid: withPayment || false,
                 });
 
@@ -264,6 +320,15 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ eventId, maxSongs = Infinity,
 
     const closeModal = () => {
         setShowModal(false);
+    };
+
+    const formatTime = (date: Date) => {
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    };
+
+    const getExistingMessages = (trackId: string) => {
+        const request = existingRequests.find(req => req.trackId === trackId);
+        return request?.messages || [];
     };
 
     return (
@@ -460,6 +525,25 @@ const MusicSearch: React.FC<MusicSearchProps> = ({ eventId, maxSongs = Infinity,
                                                 <X className="h-5 w-5" />
                                             </button>
                                         </div>
+
+                                        {/* Historial de mensajes */}
+                                        {/* {getExistingMessages(track.id).length > 0 && (
+                                            <div className="mt-3">
+                                                <h4 className="text-xs text-gray-400 mb-1">Mensajes anteriores:</h4>
+                                                <div className="space-y-2">
+                                                    {getExistingMessages(track.id).map((msg, index) => (
+                                                        <div key={index} className="bg-gray-800 p-2 rounded-lg">
+                                                            <div className="flex justify-between items-start">
+                                                                <p className="text-sm">{msg.text}</p>
+                                                                <span className="text-xs text-gray-400 ml-2 whitespace-nowrap">
+                                                                    {formatTime(msg.timestamp)}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )} */}
                                     </motion.div>
                                 )}
                             </div>

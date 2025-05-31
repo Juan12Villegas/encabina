@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { db, collection, query, where, getDocs, onSnapshot, doc, getDoc } from "@/../lib/firebase";
 import Image from "next/image";
-import { BadgeCheck, Check, Instagram, PartyPopper, Music, MapPin, Disc3, QrCode, Fingerprint, Shield, Info, Ban, CheckCircle } from "lucide-react";
+import { BadgeCheck, Check, Instagram, PartyPopper, Music, MapPin, Disc3, QrCode, Fingerprint, Shield, Info, Ban, CheckCircle, HelpCircle, ArrowLeft, ArrowRight } from "lucide-react";
 import SearchMusic from "@/components/SearchMusic";
 
 interface Evento {
@@ -30,6 +30,159 @@ interface Dj {
 
 type DjPlan = "bassline" | "drop pro" | "mainstage" | "other";
 
+// Nuevo componente TutorialModal
+const TutorialModal = ({ onClose }: { onClose: () => void }) => {
+    const [currentStep, setCurrentStep] = useState(1);
+    const totalSteps = 5;
+
+    const nextStep = () => {
+        if (currentStep < totalSteps) {
+            setCurrentStep(currentStep + 1);
+        } else {
+            onClose();
+        }
+    };
+
+    const prevStep = () => {
+        if (currentStep > 1) {
+            setCurrentStep(currentStep - 1);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+            <div className="bg-gray-800 rounded-xl max-w-lg w-full border border-gray-700 overflow-hidden">
+                <div className="relative bg-gradient-to-br from-purple-900/30 to-blue-900/30 flex items-center justify-center">
+                    {currentStep === 1 && (
+                        <div className="text-center p-6">
+                            <HelpCircle className="h-12 w-12 mx-auto text-purple-400 mb-4" />
+                            <h3 className="text-xl font-bold mb-2">¡Bienvenido al evento!</h3>
+                            <p className="text-gray-300">
+                                Te guiaremos por las funcionalidades de esta página para que puedas sacarle el máximo provecho.
+                            </p>
+                        </div>
+                    )}
+
+                    {currentStep === 2 && (
+                        <div className="text-center px-6 pt-6 flex flex-wrap">
+                            <div className="min-w-xs">
+                                <Music className="h-12 w-12 mx-auto text-purple-400 mb-4" />
+                                <h3 className="text-xl font-bold mb-2">Busca la canción</h3>
+                                <p className="text-gray-300">
+                                    Puedes buscar tus canciones favoritas por artista o nombre.
+                                </p>
+                            </div>
+
+                            <div className="rounded-xl">
+                                <Image
+                                    src="/tutorial/step1.gif"
+                                    alt="Tutorial paso 2"
+                                    className="h-full w-full object-cover rounded-xl"
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    {currentStep === 3 && (
+                        <div className="text-center px-6 pt-6 flex flex-wrap">
+                            <div className="min-w-xs">
+                                <Music className="h-12 w-12 mx-auto text-purple-400 mb-4" />
+                                <h3 className="text-xl font-bold mb-2">Escucha un preview</h3>
+                                <p className="text-gray-300">
+                                    Escucha una previa de la canción haciendo click sobre la imagen.
+                                </p>
+                            </div>
+
+                            <div className="rounded-xl">
+                                <Image
+                                    src="/tutorial/step2.gif"
+                                    alt="Tutorial paso 2"
+                                    className="h-full w-full object-cover rounded-xl"
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    {currentStep === 4 && (
+                        <div className="text-center px-6 pt-6 flex flex-wrap">
+                            <div className="min-w-xs">
+                                <Music className="h-12 w-12 mx-auto text-purple-400 mb-4" />
+                                <h3 className="text-xl font-bold mb-2">Añade un mensaje</h3>
+                                <p className="text-gray-300">
+                                    Tienes la opción de añadir un mensaje junto con la canción que vas a solicitar.
+                                </p>
+                            </div>
+
+                            <div className="rounded-xl">
+                                <Image
+                                    src="/tutorial/step3.gif"
+                                    alt="Tutorial paso 2"
+                                    className="h-full w-full object-cover rounded-xl"
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    {currentStep === 5 && (
+                        <div className="text-center px-6 pt-6 flex flex-wrap">
+                            <div className="min-w-xs">
+                                <Music className="h-12 w-12 mx-auto text-purple-400 mb-4" />
+                                <h3 className="text-xl font-bold mb-2">Solicita la canción</h3>
+                                <p className="text-gray-300">
+                                    Ahora si haz click en el ícono de enviar y listo.
+                                </p>
+                            </div>
+
+                            <div className="rounded-xl">
+                                <Image
+                                    src="/tutorial/step4.gif"
+                                    alt="Tutorial paso 2"
+                                    className="h-full w-full object-cover rounded-xl"
+                                />
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                <div className="p-6">
+                    <div className="flex justify-between items-center">
+                        <button
+                            onClick={prevStep}
+                            disabled={currentStep === 1}
+                            className={`p-2 rounded-full ${currentStep === 1 ? 'text-gray-500' : 'text-gray-300 hover:bg-gray-700'}`}
+                        >
+                            <ArrowLeft className="h-5 w-5" />
+                        </button>
+
+                        <div className="flex gap-2">
+                            {Array.from({ length: totalSteps }).map((_, i) => (
+                                <div
+                                    key={i}
+                                    className={`h-2 w-2 rounded-full ${currentStep === i + 1 ? 'bg-purple-500' : 'bg-gray-600'}`}
+                                />
+                            ))}
+                        </div>
+
+                        <button
+                            onClick={nextStep}
+                            className="p-2 rounded-full text-gray-300 hover:bg-gray-700"
+                        >
+                            {currentStep === totalSteps ? <Check className="h-5 w-5" /> : <ArrowRight className="h-5 w-5" />}
+                        </button>
+                    </div>
+
+                    <button
+                        onClick={onClose}
+                        className="mt-4 w-full py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
+                    >
+                        Saltar tutorial
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 export default function EventDetail() {
     const { id } = useParams();
     /* const router = useRouter(); */
@@ -46,9 +199,19 @@ export default function EventDetail() {
     const [invalidCode, setInvalidCode] = useState<boolean>(false);
     const [eventNotFound, setEventNotFound] = useState<boolean>(false);
     const [loading, setLoading] = useState<boolean>(true);
+    const [showTutorial, setShowTutorial] = useState<boolean>(false);
 
     const [prevQrPaymentUrl, setPrevQrPaymentUrl] = useState<string | null>(null);
     const [prevAcceptPayment, setPrevAcceptPayment] = useState<boolean>(false);
+
+    // Verificar si es la primera visita del usuario
+    useEffect(() => {
+        const hasSeenTutorial = sessionStorage.getItem('hasSeenEventTutorial');
+        if (!hasSeenTutorial) {
+            setShowTutorial(true);
+            sessionStorage.setItem('hasSeenEventTutorial', 'true');
+        }
+    }, []);
 
     const cleanId = useMemo(() => {
         if (typeof id === 'string') {
@@ -345,6 +508,10 @@ export default function EventDetail() {
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 text-white">
+            {showTutorial && (
+                <TutorialModal onClose={() => setShowTutorial(false)} />
+            )}
+
             {/* Banner con overlay */}
             <div className="relative h-48 w-full overflow-hidden">
                 <Image
@@ -509,7 +676,7 @@ export default function EventDetail() {
                                 <div className="space-y-4">
                                     <div className="flex items-center gap-2 text-green-400 bg-green-900/20 p-3 rounded-lg border border-green-800/50">
                                         <Info className="h-5 w-5" />
-                                        <span className="text-sm">Evento sin ubicación definida - Solicitudes abiertas</span>
+                                        <span className="text-sm">Evento sin ubicación definida</span>
                                     </div>
 
                                     <SearchMusic
